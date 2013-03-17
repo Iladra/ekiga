@@ -193,6 +193,12 @@ AC_SUBST(XML_LIBS)
 
 
 dnl ###############################
+dnl   GSettings support
+dnl ###############################
+
+GLIB_GSETTINGS
+
+dnl ###############################
 dnl   GConf support
 dnl ###############################
 GCONF="disabled"
@@ -860,6 +866,7 @@ dnl ###########################################################################
 AC_CONFIG_FILES([Makefile
 Doxyfile
 src/ekiga-config-tool
+org.gnome.ekiga.gschema.xml.in
 ekiga.schemas.in
 ekiga.desktop.in
 lib/Makefile
