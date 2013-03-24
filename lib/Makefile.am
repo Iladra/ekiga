@@ -116,7 +116,7 @@ libekiga_la_SOURCES += \
 	$(top_srcdir)/lib/gmconf/gmconf-upgrade.c
 
 if HAVE_GCONF
-libekiga_la_SOURCES += $(top_srcdir)/lib/gmconf/gmconf-gconf.c
+libekiga_la_SOURCES += $(top_srcdir)/lib/gmconf/gmconf-gsettings.c
 libekiga_la_LDFLAGS += $(GCONF_LIBS)
 else
 libekiga_la_SOURCES += $(top_srcdir)/lib/gmconf/gmconf-glib.c
