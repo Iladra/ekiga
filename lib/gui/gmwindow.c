@@ -39,7 +39,6 @@
 #include "config.h"
 
 #include "gmwindow.h"
-
 #include "gmconf.h"
 
 #include <gdk/gdkkeysyms.h>
@@ -52,6 +51,7 @@
 struct _GmWindowPrivate
 {
   GtkAccelGroup *accel;
+  GSettings *settings;
   gboolean hide_on_esc;
   gboolean hide_on_delete;
   gchar *key;
@@ -93,12 +93,16 @@ gm_window_configure_event (GtkWidget *widget,
 static void
 gm_window_finalize (GObject *obj)
 {
-  GmWindow *window = NULL;
+  GmWindow *self = NULL;
 
-  window = GM_WINDOW (obj);
+  self = GM_WINDOW (obj);
 
-  g_free (window->priv->key);
-  window->priv->key = NULL;
+  g_free (self->priv->key);
+  self->priv->key = NULL;
+
+  if (self->priv->settings)
+    g_clear_object (&self->priv->settings);
+  self->priv->settings = NULL;
 
   G_OBJECT_CLASS (gm_window_parent_class)->finalize (obj);
 }
@@ -155,6 +159,9 @@ gm_window_set_property (GObject *obj,
       g_free (self->priv->key);
     str = g_value_get_string (value);
     self->priv->key = g_strdup (str ? str : "");
+    if (self->priv->settings)
+      g_clear_object (&self->priv->settings);
+    self->priv->settings = g_settings_new (self->priv->key);
     break;
 
   case GM_HIDE_ON_ESC:
@@ -207,6 +214,7 @@ static void
 gm_window_init (GmWindow* self)
 {
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GM_TYPE_WINDOW, GmWindowPrivate);
+  self->priv->settings = NULL;
   self->priv->key = g_strdup ("");
   self->priv->hide_on_esc = TRUE;
   self->priv->hide_on_delete = TRUE;
@@ -269,8 +277,6 @@ window_show_cb (GtkWidget *w,
 
   GmWindow *self = NULL;
 
-  gchar *conf_key_size = NULL;
-  gchar *conf_key_position = NULL;
   gchar *size = NULL;
   gchar *position = NULL;
   gchar **couple = NULL;
@@ -279,14 +285,9 @@ window_show_cb (GtkWidget *w,
 
   g_return_if_fail (g_strcmp0 (self->priv->key, ""));
 
-  conf_key_position =
-    g_strdup_printf ("%s/position", self->priv->key);
-  conf_key_size =
-    g_strdup_printf ("%s/size", self->priv->key);
-
   if (gtk_window_get_resizable (GTK_WINDOW (w))) {
 
-    size = gm_conf_get_string (conf_key_size);
+    size = g_settings_get_string (self->priv->settings, "size");
     if (size)
       couple = g_strsplit (size, ",", 0);
 
@@ -303,7 +304,7 @@ window_show_cb (GtkWidget *w,
     g_free (size);
   }
 
-  position = gm_conf_get_string (conf_key_position);
+  position = g_settings_get_string (self->priv->settings, "position");
   if (position)
     couple = g_strsplit (position, ",", 0);
 
@@ -320,9 +321,6 @@ window_show_cb (GtkWidget *w,
   g_free (position);
 
   gtk_widget_realize (GTK_WIDGET (w));
-
-  g_free (conf_key_position);
-  g_free (conf_key_size);
 }
 
 
@@ -332,8 +330,6 @@ window_hide_cb (GtkWidget *w,
 {
   GmWindow *self = NULL;
 
-  gchar *conf_key_size = NULL;
-  gchar *conf_key_position = NULL;
   gchar *size = NULL;
   gchar *position = NULL;
 
@@ -343,24 +339,16 @@ window_hide_cb (GtkWidget *w,
 
   g_return_if_fail (g_strcmp0 (self->priv->key, ""));
 
-  conf_key_position =
-    g_strdup_printf ("%s/position", self->priv->key);
-  conf_key_size =
-    g_strdup_printf ("%s/size", self->priv->key);
-
   position = g_strdup_printf ("%d,%d", self->priv->x, self->priv->y);
-  gm_conf_set_string (conf_key_position, position);
+  g_settings_set_string (self->priv->settings, "position", position);
   g_free (position);
 
   if (gtk_window_get_resizable (GTK_WINDOW (w))) {
 
     size = g_strdup_printf ("%d,%d", self->priv->width, self->priv->height);
-    gm_conf_set_string (conf_key_size, size);
+    g_settings_set_string (self->priv->settings, "size", size);
     g_free (size);
   }
-
-  g_free (conf_key_position);
-  g_free (conf_key_size);
 }
 
 

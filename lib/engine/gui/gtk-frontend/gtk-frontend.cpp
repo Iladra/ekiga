@@ -41,6 +41,7 @@
 #include <gtk/gtk.h>
 
 #include "config.h"
+#include "ekiga-settings.h"
 
 #include "gtk-frontend.h"
 
@@ -105,10 +106,10 @@ void GtkFrontend::build ()
   boost::shared_ptr<Ekiga::ChatCore> chat_core = core.get<Ekiga::ChatCore> ("chat-core");
 
   addressbook_window =
-    addressbook_window_new_with_key (*contact_core, "/apps/" PACKAGE_NAME "/general/user_interface/addressbook_window");
-  accounts_window = accounts_window_new_with_key (core, "/apps/" PACKAGE_NAME "/general/user_interface/accounts_window");
+    addressbook_window_new_with_key (*contact_core, USER_INTERFACE ".addressbook-window");
+  accounts_window = accounts_window_new_with_key (core, USER_INTERFACE ".accounts-window");
   call_window = call_window_new (core);
-  chat_window = chat_window_new (core, "/apps/" PACKAGE_NAME "/general/user_interface/chat_window");
+  chat_window = chat_window_new (core, USER_INTERFACE ".chat-window");
   preferences_window = preferences_window_new (core);
   status_icon = status_icon_new (core);
 }
