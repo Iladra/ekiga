@@ -46,7 +46,6 @@
 #include "statusmenu.h"
 
 #include "gmcallbacks.h"
-#include "gmdialog.h"
 #include "gmentrydialog.h"
 #include "gmstatusbar.h"
 #include "gmstockicons.h"

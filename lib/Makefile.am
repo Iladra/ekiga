@@ -137,8 +137,6 @@ libekiga_la_SOURCES += \
 	$(top_srcdir)/lib/gui/gmcallbacks.h \
 	$(top_srcdir)/lib/gui/gmconfwidgets.c \
 	$(top_srcdir)/lib/gui/gmconfwidgets.h \
-	$(top_srcdir)/lib/gui/gmdialog.c \
-	$(top_srcdir)/lib/gui/gmdialog.h \
 	$(top_srcdir)/lib/gui/gmentrydialog.c \
 	$(top_srcdir)/lib/gui/gmentrydialog.h \
 	$(top_srcdir)/lib/gui/gmmenuaddon.c \
