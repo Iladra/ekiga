@@ -1350,10 +1350,10 @@ preferences_window_new (Ekiga::ServiceCore& core)
 
   /* That's an usual GtkWindow, connect it to the signals */
   g_signal_connect_swapped (window, "response",
-			    G_CALLBACK (gm_window_hide),
+			    G_CALLBACK (gtk_widget_hide),
 			    (gpointer) window);
 
-  gm_window_hide_on_delete (window);
+  gtk_widget_hide_on_delete (window);
 
   boost::signals::connection conn;
   boost::shared_ptr<Ekiga::VideoInputCore> videoinput_core = core.get<Ekiga::VideoInputCore> ("videoinput-core");
