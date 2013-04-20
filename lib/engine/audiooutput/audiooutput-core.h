@@ -48,6 +48,8 @@
 #include "ptbuildopts.h"
 #include "ptlib.h"
 
+#include <gio/gio.h>
+
 #define AUDIO_OUTPUT_FALLBACK_DEVICE_TYPE "Ekiga"
 #define AUDIO_OUTPUT_FALLBACK_DEVICE_SOURCE "Ekiga"
 #define AUDIO_OUTPUT_FALLBACK_DEVICE_NAME   "SILENT"
@@ -100,6 +102,10 @@ namespace Ekiga
        */
       void setup_conf_bridge();
 
+      /** Set up sound events
+       * @param The sound event to setup. Leave empty for all.
+       */
+      void setup_sound_events (std::string event = "");
 
       /*** Service Implementation ***/
 
@@ -367,6 +373,8 @@ namespace Ekiga
       bool yield;
 
       boost::shared_ptr<Ekiga::NotificationCore> notification_core;
+
+      GSettings *sound_events_settings;
     };
 /**
  * @}
