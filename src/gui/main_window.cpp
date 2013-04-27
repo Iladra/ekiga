@@ -39,6 +39,7 @@
 
 #include "ekiga-settings.h"
 
+#include "gmconf.h"
 #include "main_window.h"
 
 #include "ekiga.h"
@@ -57,6 +58,7 @@
 
 #include <glib/gi18n.h>
 #include <gdk/gdkkeysyms.h>
+#include <gio/gio.h>
 
 #include "engine.h"
 
@@ -147,6 +149,8 @@ struct _EkigaMainWindowPrivate
   Ekiga::scoped_connections connections;
 
   std::list<gpointer> notifiers;
+
+  GSettings *sound_events_settings;
 };
 
 /* channel types */
@@ -861,10 +865,11 @@ on_chat_unread_alert (G_GNUC_UNUSED GtkWidget* widget,
 {
   EkigaMainWindow *mw = EKIGA_MAIN_WINDOW (self);
 
-  if (!gm_conf_get_bool (SOUND_EVENTS_KEY "enable_new_message_sound"))
+  g_return_if_fail (mw != NULL);
+  if (!g_settings_get_boolean (mw->priv->sound_events_settings, "enable-new-message-sound"))
     return;
 
-  std::string file_name_string = gm_conf_get_string (SOUND_EVENTS_KEY "new_message_sound");
+  std::string file_name_string = g_settings_get_string (mw->priv->sound_events_settings, "new-message-sound");
 
   if (!file_name_string.empty ())
     mw->priv->audiooutput_core->play_file(file_name_string);
@@ -1573,6 +1578,8 @@ ekiga_main_window_init (EkigaMainWindow *mw)
   mw->priv->current_call = boost::shared_ptr<Ekiga::Call>();
   mw->priv->calling_state = Standby;
 
+  mw->priv->sound_events_settings = g_settings_new (SOUND_EVENTS_SCHEMA);
+
   for (int i = 0 ; i < NUM_SECTIONS ; i++)
     mw->priv->toggle_buttons[i] = NULL;
 
@@ -1619,6 +1626,8 @@ ekiga_main_window_dispose (GObject* gobject)
     g_object_unref (mw->priv->roster_view);
     mw->priv->roster_view = NULL;
   }
+
+  g_clear_object (&mw->priv->sound_events_settings);
 
   G_OBJECT_CLASS (ekiga_main_window_parent_class)->dispose (gobject);
 }

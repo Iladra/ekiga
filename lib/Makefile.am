@@ -367,9 +367,7 @@ libekiga_la_SOURCES += \
 	$(engine_dir)/audiooutput/audiooutput-scheduler.h \
 	$(engine_dir)/audiooutput/audiooutput-scheduler.cpp \
 	$(engine_dir)/audiooutput/audiooutput-core.h \
-	$(engine_dir)/audiooutput/audiooutput-core.cpp \
-	$(engine_dir)/audiooutput/audiooutput-gmconf-bridge.h \
-	$(engine_dir)/audiooutput/audiooutput-gmconf-bridge.cpp
+	$(engine_dir)/audiooutput/audiooutput-core.cpp
 
 ##
 # Sources of the audio input stack
@@ -379,9 +377,7 @@ libekiga_la_SOURCES += \
 	$(engine_dir)/audioinput/audioinput-manager.h	\
 	$(engine_dir)/audioinput/audioinput-info.h	\
 	$(engine_dir)/audioinput/audioinput-core.h	\
-	$(engine_dir)/audioinput/audioinput-core.cpp       \
-	$(engine_dir)/audioinput/audioinput-gmconf-bridge.h \
-	$(engine_dir)/audioinput/audioinput-gmconf-bridge.cpp
+	$(engine_dir)/audioinput/audioinput-core.cpp
 
 ##
 # Sources of the hardware abstraction layer (HAL) stack

@@ -54,6 +54,9 @@
 #include "videoinput-core.h"
 #include "audioinput-core.h"
 #include "audiooutput-core.h"
+
+#include "ekiga-settings.h"
+
 #include <gdk/gdkkeysyms.h>
 
 G_DEFINE_TYPE (EkigaAssistant, ekiga_assistant, GTK_TYPE_ASSISTANT);
@@ -99,6 +102,9 @@ struct _EkigaAssistantPrivate
   GtkListStore *summary_model;
   Ekiga::scoped_connections connections;
   std::list<gpointer> notifiers;
+
+  GSettings *audio_devices_settings;
+  GSettings *sound_events_settings;
 };
 
 /* presenting the network connection type to the user */
@@ -1102,15 +1108,15 @@ prepare_audio_devices_page (EkigaAssistant *assistant)
   PStringArray devices;
   char **array;
 
-  ringer = gm_conf_get_string (SOUND_EVENTS_KEY "output_device");
+  ringer = g_settings_get_string (assistant->priv->audio_devices_settings, "output-device");
   if (ringer == NULL || !ringer[0])
     ringer = g_strdup (DEFAULT_AUDIO_DEVICE_NAME);
 
-  player = gm_conf_get_string (AUDIO_DEVICES_KEY "output_device");
+  player = g_settings_get_string (assistant->priv->sound_events_settings, "output-device");
   if (player == NULL || !player[0])
     player = g_strdup (DEFAULT_AUDIO_DEVICE_NAME);
 
-  recorder = gm_conf_get_string (AUDIO_DEVICES_KEY "input_device");
+  recorder = g_settings_get_string (assistant->priv->audio_devices_settings, "input-device");
   if (recorder == NULL || !recorder[0])
     recorder = g_strdup (DEFAULT_AUDIO_DEVICE_NAME);
 
@@ -1147,19 +1153,19 @@ apply_audio_devices_page (EkigaAssistant *assistant)
   if (!gtk_combo_box_get_active_iter (GTK_COMBO_BOX (assistant->priv->audio_ringer), &citer))
     g_warn_if_reached ();
   gtk_tree_model_get (gtk_combo_box_get_model (GTK_COMBO_BOX (assistant->priv->audio_ringer)), &citer, 0, &device, -1);
-  gm_conf_set_string (SOUND_EVENTS_KEY "output_device", device);
+  g_settings_set_string (assistant->priv->sound_events_settings, "output-device", device);
   g_free (device);
 
   if (!gtk_combo_box_get_active_iter (GTK_COMBO_BOX (assistant->priv->audio_player), &citer))
     g_warn_if_reached ();
   gtk_tree_model_get (gtk_combo_box_get_model (GTK_COMBO_BOX (assistant->priv->audio_player)), &citer, 0, &device, -1);
-  gm_conf_set_string (AUDIO_DEVICES_KEY "output_device", device);
+  g_settings_set_string (assistant->priv->audio_devices_settings, "output-device", device);
   g_free (device);
 
   if (!gtk_combo_box_get_active_iter (GTK_COMBO_BOX (assistant->priv->audio_recorder), &citer))
     g_warn_if_reached ();
   gtk_tree_model_get (gtk_combo_box_get_model (GTK_COMBO_BOX (assistant->priv->audio_recorder)), &citer, 0, &device, -1);
-  gm_conf_set_string (AUDIO_DEVICES_KEY "input_device", device);
+  g_settings_set_string (assistant->priv->audio_devices_settings, "input-device", device);
   g_free (device);
 }
 
@@ -1520,6 +1526,8 @@ ekiga_assistant_init (EkigaAssistant *assistant)
   gtk_container_set_border_width (GTK_CONTAINER (assistant), 12);
 
   assistant->priv->last_active_page = 0;
+  assistant->priv->sound_events_settings = g_settings_new (SOUND_EVENTS_SCHEMA);
+  assistant->priv->audio_devices_settings = g_settings_new (AUDIO_DEVICES_SCHEMA);
 
   create_welcome_page (assistant);
   create_personal_data_page (assistant);
@@ -1633,6 +1641,8 @@ ekiga_assistant_dispose (GObject *object)
        ++iter)
     gm_conf_notifier_remove (*iter);
   assistant->priv->notifiers.clear (); // dispose might be called several times
+  g_clear_object (&assistant->priv->sound_events_settings);
+  g_clear_object (&assistant->priv->audio_devices_settings);
 
   G_OBJECT_CLASS (ekiga_assistant_parent_class)->dispose (object);
 }
