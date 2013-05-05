@@ -49,9 +49,11 @@
 #include <boost/bind.hpp>
 #include <glib.h>
 #include <set>
+#include <gio/gio.h>
 
 #include "ptbuildopts.h"
 #include "ptlib.h"
+#include "ekiga-settings.h"
 
 #define VIDEO_INPUT_FALLBACK_DEVICE_TYPE   "Moving Logo"
 #define VIDEO_INPUT_FALLBACK_DEVICE_SOURCE "Moving Logo"
@@ -116,6 +118,10 @@ namespace Ekiga
       /** Set up gmconf bridge
        */
       void setup_conf_bridge();
+
+      /** Set up settings
+       */
+      void setup (std::string setting);
 
 
       /*** Service Implementation ***/
@@ -354,9 +360,10 @@ private:
 
         bool end_thread;
         bool pause_thread;
-        PMutex     thread_ended;
-        PSyncPoint thread_paused;
-        PSyncPoint run_thread;
+
+        PMutex exit_mutex;
+        PMutex thread_mutex;
+        PMutex capture_mutex;
 
         VideoInputCore  & videoinput_core;
         boost::shared_ptr<VideoOutputCore> videooutput_core;
@@ -419,6 +426,7 @@ private:
       };
 
 private:
+
       std::set<VideoInputManager *> managers;
 
       VideoDeviceConfig       preview_config;
@@ -429,7 +437,7 @@ private:
       VideoInputDevice        current_device;
       VideoInputFormat        current_format;
       int                     current_channel;
-      VideoInputSettings      current_settings; 
+      VideoInputSettings      current_settings;
       VideoInputSettings      desired_settings;
 
       PMutex core_mutex;
@@ -439,6 +447,8 @@ private:
       VideoPreviewManager* preview_manager;
       VideoInputCoreConfBridge* videoinput_core_conf_bridge;
       boost::shared_ptr<Ekiga::NotificationCore> notification_core;
+
+      Settings* device_settings;
     };
 /**
  * @}

@@ -75,6 +75,7 @@ typedef struct _GmPreferencesWindow
   GtkWidget *fsbutton;
   GSettings *sound_events_settings;
   GSettings *audio_devices_settings;
+  GSettings *video_devices_settings;
   Ekiga::ServiceCore& core;
   Ekiga::scoped_connections connections;
 } GmPreferencesWindow;
@@ -85,12 +86,14 @@ _GmPreferencesWindow::_GmPreferencesWindow(Ekiga::ServiceCore &_core): core(_cor
 {
   sound_events_settings = g_settings_new (SOUND_EVENTS_SCHEMA);
   audio_devices_settings = g_settings_new (AUDIO_DEVICES_SCHEMA);
+  video_devices_settings = g_settings_new (VIDEO_DEVICES_SCHEMA);
 }
 
 _GmPreferencesWindow::~_GmPreferencesWindow()
 {
   g_clear_object (&sound_events_settings);
   g_clear_object (&audio_devices_settings);
+  g_clear_object (&video_devices_settings);
 }
 
 enum {
@@ -228,6 +231,8 @@ static void gm_pw_init_video_codecs_page (GtkWidget *prefs_window,
                                           GtkWidget *container);
 
 
+// FIXME: I'm sure the int and string option menus could be merged together...
+
 /* DESCRIPTION  :  /
  * BEHAVIOR     :  Creates a GtkOptionMenu associated with a string config
  *                 key and returns the result.
@@ -244,6 +249,24 @@ static GtkWidget *gm_pw_string_option_menu_new (GtkWidget *,
                                                 const gchar *,
                                                 const gchar *,
                                                 int);
+
+
+/* DESCRIPTION  :  /
+ * BEHAVIOR     :  Creates a GtkOptionMenu associated with an int config
+ *                 key and returns the result.
+ *                 The first parameter is the section in which the GtkEntry
+ *                 should be attached. The other parameters are the text label,
+ *                 the possible values for the menu, the config key, the
+ *                 tooltip, the row where to attach it in the section.
+ * PRE          :  The array ends with NULL.
+ */
+static GtkWidget *gm_pw_int_option_menu_new (GtkWidget *table,
+                                             const gchar *label_txt,
+                                             const gchar **options,
+                                             GSettings *settings,
+                                             const gchar *conf_key,
+                                             const gchar *tooltip,
+                                             int row);
 
 
 /* DESCRIPTION  :  /
@@ -339,6 +362,13 @@ static void string_option_menu_changed (GtkWidget *option_menu,
 static void string_option_setting_changed (GSettings *settings,
                                            gchar *key,
                                            gpointer data);
+
+static void int_option_menu_changed (GtkWidget *option_menu,
+                                     gpointer data);
+
+static void int_option_setting_changed (GSettings *settings,
+                                        gchar *key,
+                                        gpointer data);
 
 static void
 gm_prefs_window_get_audiooutput_devices_list (Ekiga::ServiceCore& core,
@@ -933,15 +963,15 @@ gm_pw_init_video_devices_page (GtkWidget *prefs_window,
   gm_prefs_window_get_videoinput_devices_list (pw->core, device_list);
   array = gm_prefs_window_convert_string_list(device_list);
   pw->video_device =
-    gnome_prefs_string_option_menu_new (subsection, _("Input device:"), (const gchar **)array, VIDEO_DEVICES_KEY "input_device", _("Select the video input device to use. If an error occurs when using this device a test picture will be transmitted."), 0, NULL);
+    gm_pw_string_option_menu_new (subsection, _("Input device:"), (const gchar **)array, pw->video_devices_settings, "input-device", _("Select the video input device to use. If an error occurs when using this device a test picture will be transmitted."), 0);
   g_free (array);
 
   /* Video Channel */
   gnome_prefs_spin_new (subsection, _("Channel:"), VIDEO_DEVICES_KEY "channel", _("The video channel number to use (to select camera, tv or other sources)"), 0.0, 10.0, 1.0, 3, NULL, false);
 
-  gnome_prefs_int_option_menu_new (subsection, _("Size:"), (const gchar**)video_size, VIDEO_DEVICES_KEY "size", _("Select the transmitted video size"), 1);
+  gm_pw_int_option_menu_new (subsection, _("Size:"), (const gchar**)video_size, pw->video_devices_settings, "size", _("Select the transmitted video size"), 1);
 
-  gnome_prefs_int_option_menu_new (subsection, _("Format:"), video_format, VIDEO_DEVICES_KEY "format", _("Select the format for video cameras (does not apply to most USB cameras)"), 2);
+  gm_pw_int_option_menu_new (subsection, _("Format:"), video_format, pw->video_devices_settings, "format", _("Select the format for video cameras (does not apply to most USB cameras)"), 2);
 
   /* That button will refresh the device list */
   gm_pw_add_update_button (container, _("_Detect devices"), G_CALLBACK (refresh_devices_list_cb), _("Click here to refresh the device list"), 1, prefs_window);
@@ -1120,6 +1150,96 @@ gm_pw_string_option_menu_new (GtkWidget *table,
 }
 
 
+GtkWidget *
+gm_pw_int_option_menu_new (GtkWidget *table,
+                           const gchar *label_txt,
+                           const gchar **options,
+                           GSettings *settings,
+                           const gchar *conf_key,
+                           const gchar *tooltip,
+                           int row)
+{
+  GtkWidget *label = NULL;
+  GtkWidget *option_menu = NULL;
+
+  GtkListStore *list_store = NULL;
+  GtkCellRenderer *renderer = NULL;
+  GtkTreeIter iter;
+
+  gchar *signal_name = NULL;
+  gboolean writable = FALSE;
+
+  int history = -1;
+  int cpt = 0;
+
+  writable = g_settings_is_writable (settings, conf_key);
+
+  label = gtk_label_new_with_mnemonic (label_txt);
+  if (!writable)
+    gtk_widget_set_sensitive (GTK_WIDGET (label), FALSE);
+
+  gtk_table_attach (GTK_TABLE (table), label, 0, 1, row, row+1,
+                    (GtkAttachOptions) (GTK_FILL),
+                    (GtkAttachOptions) (GTK_FILL),
+                    0, 0);
+
+  gtk_misc_set_alignment (GTK_MISC (label), 0.0, 0.5);
+  gtk_label_set_justify (GTK_LABEL (label), GTK_JUSTIFY_LEFT);
+
+  list_store = gtk_list_store_new (4, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_POINTER);
+  option_menu = gtk_combo_box_new_with_model (GTK_TREE_MODEL (list_store));
+  if (!writable)
+    gtk_widget_set_sensitive (GTK_WIDGET (option_menu), FALSE);
+  renderer = gtk_cell_renderer_text_new ();
+  gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (option_menu), renderer, FALSE);
+  gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (option_menu), renderer,
+                                  "text", COLUMN_STRING_TRANSLATED,
+                                  NULL);
+  g_object_set (G_OBJECT (renderer),
+                "ellipsize-set", TRUE,
+                "ellipsize", PANGO_ELLIPSIZE_END,
+                "width-chars", 30, NULL);
+  gtk_label_set_mnemonic_widget (GTK_LABEL (label), option_menu);
+
+  history = g_settings_get_int (settings, conf_key);
+  while (options [cpt]) {
+
+    gtk_list_store_append (GTK_LIST_STORE (list_store), &iter);
+    gtk_list_store_set (GTK_LIST_STORE (list_store), &iter,
+                        COLUMN_STRING_RAW, options [cpt],
+                        COLUMN_STRING_TRANSLATED, gettext (options [cpt]),
+                        COLUMN_GSETTINGS, settings,
+                        -1);
+    cpt++;
+  }
+
+  gtk_combo_box_set_active (GTK_COMBO_BOX (option_menu), history);
+  gtk_table_attach (GTK_TABLE (table), option_menu, 1, 2, row, row+1,
+                    (GtkAttachOptions) (GTK_FILL),
+                    (GtkAttachOptions) (GTK_FILL),
+                    0, 0);
+
+  if (tooltip)
+    gtk_widget_set_tooltip_text (option_menu, tooltip);
+
+  /* Update configuration when the user changes the selected option */
+  g_signal_connect (option_menu, "changed",
+		    G_CALLBACK (int_option_menu_changed),
+  		    (gpointer) conf_key);
+
+  /* Update the widget when the user changes the configuration */
+  signal_name = g_strdup_printf ("changed::%s", conf_key);
+  g_signal_connect (settings, signal_name,
+                    G_CALLBACK (int_option_setting_changed), option_menu);
+  g_free (signal_name);
+
+  gtk_widget_show_all (table);
+
+  return option_menu;
+}
+
+
+
 void
 gm_pw_string_option_menu_update (GtkWidget *option_menu,
                                  const gchar **options,
@@ -1193,7 +1313,7 @@ refresh_devices_list_cb (G_GNUC_UNUSED GtkWidget *widget,
   g_return_if_fail (data != NULL);
   GtkWidget *prefs_window = GTK_WIDGET (data);
 
-  gm_prefs_window_update_devices_list(prefs_window);
+  gm_prefs_window_update_devices_list (prefs_window);
 }
 
 
@@ -1524,8 +1644,74 @@ string_option_setting_changed (GSettings *settings,
                                      NULL);
 }
 
+
+void
+int_option_menu_changed (GtkWidget *option_menu,
+			 gpointer data)
+{
+  gchar *key = NULL;
+  GSettings *settings = NULL;
+
+  GtkTreeModel *model = NULL;
+  GtkTreeIter iter;
+
+  unsigned int i = 0;
+  unsigned int current_value = 0;
+
+  key = (gchar *) data;
+
+  model = gtk_combo_box_get_model (GTK_COMBO_BOX (option_menu));
+  if (gtk_combo_box_get_active_iter (GTK_COMBO_BOX (option_menu), &iter)) {
+
+    gtk_tree_model_get (GTK_TREE_MODEL (model), &iter,
+                        COLUMN_GSETTINGS, &settings, -1);
+    i = gtk_combo_box_get_active (GTK_COMBO_BOX (option_menu));
+    current_value = g_settings_get_int (settings, key);
+
+    if (i != current_value)
+      g_settings_set_int (settings, key, i);
+  }
+}
+
+
+void
+int_option_setting_changed (GSettings *settings,
+			    gchar *key,
+			    gpointer data)
+{
+  GtkWidget *e = NULL;
+
+  GtkTreeModel *model = NULL;
+  GtkTreeIter iter;
+
+  gint current_value = 0;
+
+  e = GTK_WIDGET (data);
+
+  model = gtk_combo_box_get_model (GTK_COMBO_BOX (e));
+  gtk_tree_model_get_iter_first (model, &iter);
+
+  gtk_tree_model_get (model, &iter, COLUMN_GSETTINGS, &settings, -1);
+
+  current_value = g_settings_get_int (settings, key);
+
+  g_signal_handlers_block_matched (G_OBJECT (e),
+                                   G_SIGNAL_MATCH_FUNC,
+                                   0, 0, NULL,
+                                   (gpointer) int_option_menu_changed,
+                                   NULL);
+  if (current_value != gtk_combo_box_get_active (GTK_COMBO_BOX (e)))
+    gtk_combo_box_set_active (GTK_COMBO_BOX (e), current_value);
+  g_signal_handlers_unblock_matched (G_OBJECT (e),
+                                     G_SIGNAL_MATCH_FUNC,
+                                     0, 0, NULL,
+                                     (gpointer) int_option_menu_changed,
+                                     NULL);
+}
+
+
 /* Public functions */
-void 
+void
 gm_prefs_window_update_devices_list (GtkWidget *prefs_window)
 {
   GmPreferencesWindow *pw = NULL;
