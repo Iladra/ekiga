@@ -199,7 +199,7 @@ engine_init (Ekiga::ServiceCorePtr service_core,
      code in question to do it itself
    */
 
-  videooutput_core->setup_conf_bridge();
+  videooutput_core->setup ();
   videoinput_core->setup ("any");
   audioinput_core->setup ();
   audiooutput_core->setup ();

@@ -28,6 +28,7 @@
 
 #include "config.h"
 #include "ext-window.h"
+#include "gmconf.h"
 
 #ifndef WIN32
 #include <gdk/gdkx.h>
